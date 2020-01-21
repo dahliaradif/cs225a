@@ -18,10 +18,8 @@ redis_password=""
 
 # greenLower = (29, 86, 6) original
 greenLower = (0, 45, 6)
-# greenLower = (29, 34, 27)
 # greenUpper = (64, 255, 255) original
 greenUpper = (100, 255, 255)
-# greenUpper = (27, 51, 66)
 pts = deque(maxlen=64)
 
 vs=VideoStream(src=0).start()
@@ -30,7 +28,7 @@ time.sleep(2.0)
 r=redis.StrictRedis(host=redis_host, port=redis_port, password=redis_password, decode_responses=True)
 r.set("msg:hello", "Hello redis!!!!!")
 
-
+#Based on the center of min enclosing circle, determine the shoot decision to send as a redis key to the controller
 def set_redis(x,y,w,h,cx,cy):
 	r.set("opencv2:rect", str([x,y,w,h]))
 	r.set("opencv2:circle", str([cx,cy]))
@@ -54,29 +52,34 @@ while True:
 	frame=imutils.resize(frame,width=600)
 	blurred=cv2.GaussianBlur(frame,(11,11),0)
 	hsv=cv2.cvtColor(blurred,cv2.COLOR_BGR2HSV)
-
+	#Look for a certain range of colour (corresponding to the goal colour)
 	mask=cv2.inRange(hsv,greenLower,greenUpper)
+	#Erode and dilate to eliminate false positives
 	mask=cv2.erode(mask,None,iterations=2)
 	mask=cv2.dilate(mask,None,iterations=2)
-
+	#returns the set of outlines (i.e., contours) that correspond to the detected green colour
 	cnts=cv2.findContours(mask.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 	cnts=imutils.grab_contours(cnts)
 	center=None
 
 	if len(cnts)>0:
+		#obtain the contour with the largest area, and find the minimum enclosing circle
 		c=max(cnts,key=cv2.contourArea)
 		((x,y),radius)=cv2.minEnclosingCircle(c)
-
+		#Obtain the centroid of the contour (not used for the final images in report)
 		M=cv2.moments(c)
 		center=(int(M["m10"]/M["m00"]), int(M["m01"]/M["m00"]))
 
 		if radius>10:
+			#Draw the minimium enclosing circle 
 			cv2.circle(frame,(int(x),int(y)),int(radius), (0,255,255),2)
 			cv2.circle(frame,(int(x),int(y)),3, (0,0,255),2)
-			# cv2.circle(frame,center,5,(0,0,225),-1)
-
+			#find the largest bounding box 
+			#(rx,ry) = top left coordinate, and r2, rh =  width/height 
 			rx,ry,rw,rh = cv2.boundingRect(c)
+			# draw the biggest contour (c) in green
 			cv2.rectangle(frame,(rx,ry),(rx+rw,ry+rh),(0,255,0),2)
+			#Obtain the correct location of the bounding box, and get the corresponding state
 			set_redis(rx,ry,rw,rh,int(x),int(y))
 		else:
 			set_redis(0,0,0,0,0,0)
