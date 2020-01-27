@@ -180,7 +180,7 @@ int main() {
     ofstream joint_velocity;
     joint_velocity.open("joint_velocity.txt");
 
-    // DO WE NEED?
+    // DON'T NEED (Old cartesian controller)
     // Intermediate point of the trajectory
     Vector3d xDesInter = Vector3d(0.5328,0.09829, 0.20);
     // End point of the trajectory
@@ -200,7 +200,7 @@ int main() {
 	double tFollowThru;
 	double tSlowDown;
 	double tHold;
-    char direction = 'x'; // Defined to x as an invalid input
+    	char direction = 'x'; // Defined to x as an invalid input
 
 
 
@@ -212,10 +212,10 @@ int main() {
 		// read robot state from redis
 		robot->_q = redis_client.getEigenMatrixJSON(JOINT_ANGLES_KEY);
 		robot->_dq = redis_client.getEigenMatrixJSON(JOINT_VELOCITIES_KEY);
-        robot->linearVelocity(current_velocity, control_link, control_point);
-        robot->position(current_pos, control_link, control_point);
+       	 	robot->linearVelocity(current_velocity, control_link, control_point);
+       		robot->position(current_pos, control_link, control_point);
 
-        goal_position = redis_client.get(GOAL_POSITION_KEY);
+        	goal_position = redis_client.get(GOAL_POSITION_KEY);
 
 		// update model
 		if(flag_simulation)
@@ -270,7 +270,6 @@ int main() {
             // Change the desired configuration based on user input
             if (direction == 'r')
             {
-                // Not yet configured
                 q_ready_pos << -0.29748,1.38033,-1.67338,-1.76919,-0.0499905,1.95202,-1.23665;
                 q_inter_pos1 << 0.261701,1.35196,-1.76101,-1.6411,1.84065,1.36388,-0.27407;
                 q_inter_pos2 << 0.710947,1.38855,-1.86157,-1.19313,1.8442,1.41126,0.204385;
@@ -320,18 +319,18 @@ int main() {
 			// Update task model and set hierarchy
 			N_prec.setIdentity();
 			joint_task->updateTaskModel(N_prec);
-            joint_task->_use_velocity_saturation_flag = true;
+            		joint_task->_use_velocity_saturation_flag = true;
 
 			// Compute torques
 			joint_task->computeTorques(joint_task_torques);
 			command_torques = saturate_torques(joint_task_torques);
 
-            // Print the torques
-            trajectory << current_pos.transpose() << ' ' << time << endl;
-            joints << robot->_q.transpose() << ' ' << time << endl;
-            joint_velocity << robot->_dq.transpose() << ' ' << time << endl;
-            velocity << current_velocity.transpose() << ' ' << time << endl;
-            torques << command_torques.transpose() << ' ' << time << endl;
+			 // Print the torques
+			 trajectory << current_pos.transpose() << ' ' << time << endl;
+			 joints << robot->_q.transpose() << ' ' << time << endl;
+			 joint_velocity << robot->_dq.transpose() << ' ' << time << endl;
+			 velocity << current_velocity.transpose() << ' ' << time << endl;
+			 torques << command_torques.transpose() << ' ' << time << endl;
 
 
             // Once the robot has reached close to its desired initial configuration,
@@ -341,7 +340,7 @@ int main() {
 				cout << "SWING STATE\n" <<endl;
 				joint_task->_kp = 250.0;
 				joint_task->_kv = 15.0;
-                joint_task->_use_velocity_saturation_flag = false;
+                		joint_task->_use_velocity_saturation_flag = false;
 				state = SWING;
 				taskStart_time = timer.elapsedTime();
 			}
@@ -354,26 +353,26 @@ int main() {
              */
             
 			// Initialize the task timer
-            tTask = timer.elapsedTime() - taskStart_time;
+           		 tTask = timer.elapsedTime() - taskStart_time;
 
-            // Set up the linear interpolation beteween the intermediate position and the initial position
-            q_interpolated = (q_ready_pos + (q_inter_pos1-q_ready_pos)*tTask/tContact);
+            		// Set up the linear interpolation beteween the intermediate position and the initial position
+            		q_interpolated = (q_ready_pos + (q_inter_pos1-q_ready_pos)*tTask/tContact);
 			joint_task->_desired_position = q_interpolated;
 
 			// Update task model and set hierarchy
 			N_prec.setIdentity();
 			joint_task->updateTaskModel(N_prec);
-            joint_task->_use_velocity_saturation_flag = false;
+            		joint_task->_use_velocity_saturation_flag = false;
 			joint_task->computeTorques(joint_task_torques);
 			command_torques = saturate_torques(joint_task_torques);
 
-            // Print the torques
-            trajectory << current_pos.transpose() << ' ' << time << endl;
-            des_trajectory << xDesF.transpose() << ' ' << time << endl;
-            joints << robot->_q.transpose() << ' ' << time << endl;
-            joint_velocity << robot->_dq.transpose() << ' ' << time << endl;
-            velocity << current_velocity.transpose() << ' ' << time << endl;
-            torques << command_torques.transpose() << ' ' << time << endl;
+		        // Print the torques
+		        trajectory << current_pos.transpose() << ' ' << time << endl;
+		        des_trajectory << xDesF.transpose() << ' ' << time << endl;
+		        joints << robot->_q.transpose() << ' ' << time << endl;
+		        joint_velocity << robot->_dq.transpose() << ' ' << time << endl;
+		        velocity << current_velocity.transpose() << ' ' << time << endl;
+		        torques << command_torques.transpose() << ' ' << time << endl;
 
 
             // Once the robot has reached close enough to the desired intermediate point, 
@@ -392,26 +391,26 @@ int main() {
              */
 
 			// Initialize the task timer
-            tTask = timer.elapsedTime() - taskStart_time;
+            		tTask = timer.elapsedTime() - taskStart_time;
             
             
-		    q_interpolated = (q_inter_pos1 + (q_inter_pos2-q_inter_pos1)*tTask/tFollowThru);
+		    	q_interpolated = (q_inter_pos1 + (q_inter_pos2-q_inter_pos1)*tTask/tFollowThru);
 			joint_task->_desired_position = q_interpolated;
 
 			// Update task model and set hierarchy
 			N_prec.setIdentity();
 			joint_task->updateTaskModel(N_prec);
-            joint_task->_use_velocity_saturation_flag = false;
+            		joint_task->_use_velocity_saturation_flag = false;
 			joint_task->computeTorques(joint_task_torques);
 			command_torques = saturate_torques(joint_task_torques);
 
-            // Print the torques
-            trajectory << current_pos.transpose() << ' ' << time << endl;
-            des_trajectory << xDesF.transpose() << ' ' << time << endl;
-            joints << robot->_q.transpose() << ' ' << time << endl;
-            joint_velocity << robot->_dq.transpose() << ' ' << time << endl;
-            velocity << current_velocity.transpose() << ' ' << time << endl;
-            torques << command_torques.transpose() << ' ' << time << endl;
+			    // Print the torques
+			    trajectory << current_pos.transpose() << ' ' << time << endl;
+			    des_trajectory << xDesF.transpose() << ' ' << time << endl;
+			    joints << robot->_q.transpose() << ' ' << time << endl;
+			    joint_velocity << robot->_dq.transpose() << ' ' << time << endl;
+			    velocity << current_velocity.transpose() << ' ' << time << endl;
+			    torques << command_torques.transpose() << ' ' << time << endl;
 
             // Once the arm is close enough to the final position, change the controller
             // to hold the arm at that position
@@ -431,16 +430,16 @@ int main() {
              */
 
 			// Initialize the task timer
-            tTask = timer.elapsedTime() - taskStart_time;
+            		tTask = timer.elapsedTime() - taskStart_time;
             
             
-		    q_interpolated = (q_inter_pos2 + (q_final_pos1-q_inter_pos2)*tTask/tSlowDown);
+		    	q_interpolated = (q_inter_pos2 + (q_final_pos1-q_inter_pos2)*tTask/tSlowDown);
 			joint_task->_desired_position = q_interpolated;
 
 			// Update task model and set hierarchy
 			N_prec.setIdentity();
 			joint_task->updateTaskModel(N_prec);
-            joint_task->_use_velocity_saturation_flag = false;
+            		joint_task->_use_velocity_saturation_flag = false;
 			joint_task->computeTorques(joint_task_torques);
 			command_torques = saturate_torques(joint_task_torques);
 
@@ -460,9 +459,9 @@ int main() {
              * Hold the arm at the final position once the full swing motion has been completed.
              */
 
-            tTask = timer.elapsedTime() - taskStart_time;
+            		tTask = timer.elapsedTime() - taskStart_time;
             
-        	q_interpolated = (q_final_pos1 + (q_final_pos2-q_final_pos1)*tTask/tHold);
+        		q_interpolated = (q_final_pos1 + (q_final_pos2-q_final_pos1)*tTask/tHold);
 			joint_task->_desired_position = q_interpolated;
 
 			if ( (robot->_q - q_final_pos2).norm() < 0.2 ) {
@@ -472,7 +471,7 @@ int main() {
 			// Update task model and set hierarchy
 			N_prec.setIdentity();
 			joint_task->updateTaskModel(N_prec);
-            joint_task->_use_velocity_saturation_flag = true;
+            		joint_task->_use_velocity_saturation_flag = true;
 			joint_task->computeTorques(joint_task_torques);
 			command_torques = saturate_torques(joint_task_torques);
 
